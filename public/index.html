@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>早押しクイズロワイヤル</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <p id="conn" class="conn" hidden></p>
+
+  <!-- はじめの画面 -->
+  <section id="home" class="screen">
+    <h1>早押しクイズロワイヤル</h1>
+    <label>名前<input id="name" maxlength="10" autocomplete="nickname"></label>
+    <button type="button" id="create" class="primary">部屋をつくる</button>
+    <p class="or">または</p>
+    <label>部屋番号<input id="code" inputmode="numeric" maxlength="4" autocomplete="off"></label>
+    <button type="button" id="join">部屋に入る</button>
+    <p id="error" class="error" aria-live="polite"></p>
+  </section>
+
+  <!-- 待合室 -->
+  <section id="lobby" class="screen" hidden>
+    <p class="hint">部屋番号</p>
+    <p id="lobby-code" class="code"></p>
+    <p class="hint">この番号をみんなに教えてね<br><span id="invite"></span></p>
+    <ul id="lobby-players" class="players"></ul>
+    <div id="host-controls" class="screen">
+      <div id="counts" class="seg"></div>
+      <button type="button" id="start" class="primary">スタート</button>
+    </div>
+    <p id="lobby-wait" class="hint"></p>
+    <button type="button" id="leave-lobby" class="link">部屋を出る</button>
+  </section>
+
+  <!-- 対戦中 -->
+  <section id="game" class="screen" hidden>
+    <div class="top">
+      <span id="q-number"></span>
+      <span id="scores" class="scores"></span>
+      <button type="button" id="leave-game" class="link">退出</button>
+    </div>
+    <p id="q-text" class="q-text"></p>
+    <div class="timer"><div id="timer-bar"></div></div>
+    <p id="status" class="status" aria-live="polite"></p>
+    <div id="choices" class="choices"></div>
+    <button type="button" id="buzz" class="buzz">早押し！</button>
+  </section>
+
+  <!-- 結果 -->
+  <section id="result" class="screen" hidden>
+    <p class="hint">結果</p>
+    <p id="winner" class="winner"></p>
+    <ol id="ranking" class="players"></ol>
+    <button type="button" id="again" class="primary">もう一度</button>
+    <p id="result-wait" class="hint">ホストの操作を待っています…</p>
+    <button type="button" id="leave-result" class="link">部屋を出る</button>
+  </section>
+</main>
+<script src="client.js"></script>
+</body>
+</html>

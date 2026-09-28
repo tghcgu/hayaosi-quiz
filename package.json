@@ -1,0 +1,14 @@
+{
+  "name": "hayaoshi-quiz-royale",
+  "version": "0.1.0",
+  "private": true,
+  "description": "それぞれのスマホで遊ぶ早押しクイズ対戦「早押しクイズロワイヤル」",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --ip 0.0.0.0",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.142.0"
+  }
+}

@@ -1,0 +1,133 @@
+:root {
+  --bg: #fff;
+  --text: #111;
+  --muted: #666;
+  --line: #ccc;
+  --ok: #1f8a3e;
+  --ng: #d93a3f;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111;
+    --text: #eee;
+    --muted: #999;
+    --line: #444;
+    --ok: #3fb760;
+    --ng: #f0585d;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+main {
+  max-width: 560px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+.screen { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+h1 { margin: 24px 0 8px; font-size: 1.6rem; }
+p { margin: 0; }
+
+label { display: grid; gap: 4px; color: var(--muted); font-size: .9rem; }
+
+input {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* iPhoneで入力時にズームしないように */
+}
+
+button {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled { cursor: default; }
+button.primary { border-color: var(--text); background: var(--text); color: var(--bg); font-weight: 700; }
+button.link { align-self: center; padding: 8px; border: 0; background: none; color: var(--muted); text-decoration: underline; }
+
+.conn { margin-bottom: 12px; padding: 8px; border-radius: 8px; background: var(--ng); color: #fff; text-align: center; }
+.or { color: var(--muted); text-align: center; }
+.error { min-height: 1.4em; color: var(--ng); }
+.hint { color: var(--muted); font-size: .9rem; }
+.code { font-size: 3rem; font-weight: 800; letter-spacing: .15em; }
+
+.seg { display: flex; gap: 6px; }
+.seg button { flex: 1; }
+.seg button.on { border-color: var(--text); outline: 1px solid var(--text); font-weight: 700; }
+
+.players { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.players li { display: flex; align-items: center; gap: 8px; }
+.players .tag { color: var(--muted); font-size: .8rem; }
+.players .pts { margin-left: auto; font-weight: 700; }
+
+.dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+
+/* 対戦中 */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: .9rem; }
+.top .link { padding: 0; }
+.scores { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.score { display: flex; align-items: center; gap: 4px; }
+.score.me { font-weight: 700; }
+.score.locked, .score.offline { opacity: .4; }
+.score.locked { text-decoration: line-through; }
+
+.q-text { min-height: 4.8em; margin-top: 8px; font-size: 1.4rem; font-weight: 700; line-height: 1.6; }
+.q-text .rest { color: var(--muted); }
+body[data-phase="reading"] .q-text::after { content: "▍"; color: var(--muted); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.timer { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+#timer-bar { height: 100%; background: var(--text); transform: scaleX(0); transform-origin: left; }
+
+.status { min-height: 1.5em; font-weight: 700; }
+
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.choice { text-align: left; }
+.choice:not(:disabled) { border: 2px solid var(--text); font-weight: 700; }
+.choice.out { opacity: .4; text-decoration: line-through; }
+.choice.correct { border: 2px solid var(--ok); color: var(--ok); font-weight: 700; }
+
+.buzz {
+  min-height: min(30vh, 240px);
+  margin-top: auto;
+  border: 0;
+  border-radius: 16px;
+  background: var(--c);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 800;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.buzz:active:not(:disabled) { filter: brightness(.8); }
+.buzz:disabled { opacity: .3; }
+
+.winner { font-size: 1.8rem; font-weight: 800; }
