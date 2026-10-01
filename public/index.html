@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>早押しクイズロワイヤル</title>
+<meta name="theme-color" content="#1d2340">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,6 +23,7 @@
     <label>部屋番号<input id="code" inputmode="numeric" maxlength="4" autocomplete="off"></label>
     <button type="button" id="join">部屋に入る</button>
     <p id="error" class="error" aria-live="polite"></p>
+    <a href="/privacy" class="footer-link">プライバシーポリシー</a>
   </section>
 
   <!-- 待合室 -->
@@ -28,7 +33,12 @@
     <p class="hint">この番号をみんなに教えてね<br><span id="invite"></span></p>
     <ul id="lobby-players" class="players"></ul>
     <div id="host-controls" class="screen">
+      <p class="hint">問題数</p>
       <div id="counts" class="seg"></div>
+      <p class="hint">答え方</p>
+      <div id="modes" class="seg"></div>
+      <p class="hint">ジャンル（複数選べます）</p>
+      <div id="genres" class="tags"></div>
       <button type="button" id="start" class="primary">スタート</button>
     </div>
     <p id="lobby-wait" class="hint"></p>
@@ -46,6 +56,10 @@
     <div class="timer"><div id="timer-bar"></div></div>
     <p id="status" class="status" aria-live="polite"></p>
     <div id="choices" class="choices"></div>
+    <div id="input" class="input" hidden>
+      <div id="typed" class="typed"></div>
+      <div id="letters" class="letters"></div>
+    </div>
     <button type="button" id="buzz" class="buzz">早押し！</button>
   </section>
 

@@ -5,10 +5,14 @@
   "description": "それぞれのスマホで遊ぶ早押しクイズ対戦「早押しクイズロワイヤル」",
   "type": "module",
   "scripts": {
+    "quiz": "node quiz/build.js",
+    "predev": "node quiz/build.js",
     "dev": "wrangler dev --ip 0.0.0.0",
+    "predeploy": "node quiz/build.js",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
+    "@bubblewrap/cli": "^1.25.0",
     "wrangler": "^4.142.0"
   }
 }

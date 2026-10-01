@@ -1,0 +1,43 @@
+{
+  "packageId": "io.github.tghcgu.hayaoshiroyale",
+  "host": "hayaoshi-quiz-royale.qoj.workers.dev",
+  "name": "早押しクイズロワイヤル",
+  "launcherName": "ハヤロワ",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#1D2340",
+  "themeColorDark": "#1D2340",
+  "navigationColor": "#1D2340",
+  "navigationColorDark": "#1D2340",
+  "navigationDividerColor": "#1D2340",
+  "navigationDividerColorDark": "#1D2340",
+  "backgroundColor": "#1D2340",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://hayaoshi-quiz-royale.qoj.workers.dev/icon-512.png",
+  "maskableIconUrl": "https://hayaoshi-quiz-royale.qoj.workers.dev/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "C:\\Users\\tkt01\\hayaoshi-android-key\\upload.jks",
+    "alias": "upload"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://hayaoshi-quiz-royale.qoj.workers.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://hayaoshi-quiz-royale.qoj.workers.dev/",
+  "minSdkVersion": 21,
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appVersion": "1.0.0"
+}

@@ -2,7 +2,8 @@
 // 手元で試す: npm run dev / 公開する: npm run deploy
 
 import { DurableObject } from 'cloudflare:workers';
-import QUESTIONS from '../questions.js';
+import QUESTIONS from './questions.generated.json';
+import { isInputQuestion, letterChoices } from './kana.js';
 
 // ===== ゲームの設定 =====
 const MAX_PLAYERS = 8;
@@ -12,7 +13,13 @@ const ANSWER_TIME = 8000;    // 押してから答えるまでの制限時間
 const WAIT_TIME = 5000;      // 問題文が出きってから押せる時間
 const FEEDBACK_TIME = 1200;  // 不正解のあと問題文を再開するまでの間
 const REVEAL_TIME = 4000;    // 正解を見せてから次の問題に進むまでの間
-const QUESTION_COUNTS = [5, 10, 0]; // 選べる問題数（0は全問）
+const LETTER_TIME = 6000;    // 文字入力で1文字選ぶまでの制限時間
+const QUESTION_COUNTS = [5, 10, 20]; // 選べる問題数
+const ANSWER_MODES = ['mix', 'choice', 'input']; // 答え方: ミックス / 選択肢 / 文字入力
+const MIX_INPUT_RATE = 0.3;  // ミックスのとき、文字入力で出す問題の割合
+
+// ジャンルの一覧（問題ファイルにならんでいる順）
+const GENRES = [...new Set(QUESTIONS.map((q) => q.genre))];
 const IDLE_CLOSE_TIME = 30 * 60 * 1000; // 待合室・結果画面でだれも操作しなかったら部屋を閉じるまでの時間
 const SILENT_TIMEOUT = 60 * 1000;       // スマホから何も届かなくなったら切断とみなすまでの時間
 
@@ -71,6 +78,8 @@ export class Room extends DurableObject {
     this.hostId = null;
     this.players = [];
     this.questionCount = 10;
+    this.answerMode = 'mix';
+    this.genres = []; // 遊ぶジャンル（空ならすべて）
     this.phase = 'lobby'; // lobby → ready → reading ⇄ answering → feedback … → reveal → … → result
     this.message = '';
     this.questions = [];
@@ -79,6 +88,10 @@ export class Room extends DurableObject {
     this.shown = 0;
     this.choices = [];
     this.choicesVisible = false;
+    this.mode = 'choice';     // この問題の答え方（choice / input）
+    this.answerChars = [];    // 文字入力の正解を1文字ずつにしたもの
+    this.typed = 0;           // 文字入力で、正しく選べた文字の数
+    this.letters = null;      // 文字入力で、いま出している4つの文字
     this.buzzer = null;
     this.winner = null;
     this.timer = null;
@@ -136,8 +149,10 @@ export class Room extends DurableObject {
 
     switch (msg.type) {
       case 'settings':
-        if (isHost && this.phase === 'lobby' && QUESTION_COUNTS.includes(msg.questionCount)) {
-          this.questionCount = msg.questionCount;
+        if (isHost && this.phase === 'lobby') {
+          if (QUESTION_COUNTS.includes(msg.questionCount)) this.questionCount = msg.questionCount;
+          if (ANSWER_MODES.includes(msg.answerMode)) this.answerMode = msg.answerMode;
+          if (Array.isArray(msg.genres)) this.genres = GENRES.filter((g) => msg.genres.includes(g));
           this.broadcast();
         }
         break;
@@ -149,6 +164,9 @@ export class Room extends DurableObject {
         break;
       case 'answer':
         this.answer(player, msg.choice);
+        break;
+      case 'letter':
+        this.pickLetter(player, msg.index, msg.pos);
         break;
       case 'lobby':
         if (isHost && this.phase === 'result') this.backToLobby();
@@ -282,7 +300,16 @@ export class Room extends DurableObject {
 
   startGame() {
     if (QUESTIONS.length === 0) return;
-    this.questions = shuffle(QUESTIONS).slice(0, this.questionCount || QUESTIONS.length);
+    const count = this.questionCount;
+    const pool = this.genres.length ? QUESTIONS.filter((q) => this.genres.includes(q.genre)) : QUESTIONS;
+    // 答えがひらがな・カタカナだけで、選択肢なしでも答えが決まる問題は、文字入力でも出せる
+    const inputPool = pool.filter(isInputQuestion);
+    const inputCount = this.answerMode === 'input' ? count : this.answerMode === 'mix' ? Math.round(count * MIX_INPUT_RATE) : 0;
+    const inputs = shuffle(inputPool).slice(0, inputCount).map((q) => ({ ...q, mode: 'input' }));
+    // 選んだジャンルに文字入力で出せる問題が足りないときは、選択肢の問題でうめる
+    const used = new Set(inputs.map((q) => q.q));
+    const choices = shuffle(pool.filter((q) => !used.has(q.q))).slice(0, count - inputs.length).map((q) => ({ ...q, mode: 'choice' }));
+    this.questions = shuffle([...inputs, ...choices]);
     this.index = 0;
     for (const p of this.players) p.score = 0;
     this.startQuestion();
@@ -299,6 +326,10 @@ export class Room extends DurableObject {
       ...q.wrong.map((text) => ({ text, correct: false })),
     ]).map((c) => ({ ...c, out: false }));
     this.choicesVisible = false;
+    this.mode = q.mode;
+    this.answerChars = Array.from(q.answer);
+    this.typed = 0;
+    this.letters = null;
     this.buzzer = null;
     this.winner = null;
     for (const p of this.players) p.locked = false;
@@ -310,6 +341,8 @@ export class Room extends DurableObject {
   resumeReading() {
     this.clearTimers();
     this.buzzer = null;
+    this.typed = 0;
+    this.letters = null;
     if (this.shown >= this.chars.length) return this.startWaiting();
     this.setPhase('reading', 'わかったら早押し！');
     this.textTimer = setInterval(() => {
@@ -335,31 +368,55 @@ export class Room extends DurableObject {
     if (player.locked) return;
     this.clearTimers();
     this.buzzer = player.id;
-    this.choicesVisible = true;
     this.setPhase('answering', `${player.name} が早押し！`);
-    this.startTimer(ANSWER_TIME, () => this.judge(player, -1));
+    if (this.mode === 'input') {
+      this.typed = 0;
+      this.letters = letterChoices(this.answerChars[0]);
+      this.startTimer(LETTER_TIME, () => this.judge(player, -1));
+    } else {
+      this.choicesVisible = true;
+      this.startTimer(ANSWER_TIME, () => this.judge(player, -1));
+    }
+    this.broadcast();
+  }
+
+  // 文字入力: 4つの文字から1つ選ぶ。正しければ次の文字へ、まちがえたらお手つき
+  // pos: スマホが何文字目のつもりで選んだか。連打で次の文字の選択にずれないよう、合わないものは無視する
+  pickLetter(player, index, pos) {
+    if (this.phase !== 'answering' || this.mode !== 'input' || this.buzzer !== player.id) return;
+    if (!Number.isInteger(index) || !this.letters || !this.letters[index]) return;
+    if (pos !== this.typed) return;
+    this.clearTimers();
+    if (this.letters[index] !== this.answerChars[this.typed]) return this.judge(player, -1, { missed: true });
+    this.typed++;
+    if (this.typed >= this.answerChars.length) return this.judge(player, -1, { completed: true });
+    this.letters = letterChoices(this.answerChars[this.typed]);
+    this.startTimer(LETTER_TIME, () => this.judge(player, -1));
     this.broadcast();
   }
 
   answer(player, index) {
-    if (this.phase !== 'answering' || this.buzzer !== player.id) return;
+    if (this.phase !== 'answering' || this.mode !== 'choice' || this.buzzer !== player.id) return;
     if (!Number.isInteger(index)) return;
     const choice = this.choices[index];
     if (!choice || choice.out) return;
     this.judge(player, index);
   }
 
-  judge(player, index) {
+  // index: 選んだ選択肢（時間切れや文字入力では -1）
+  // missed: 文字入力でまちがった文字を選んだ / completed: 文字入力で最後の文字まで正しく選べた
+  judge(player, index, { missed = false, completed = false } = {}) {
     this.clearTimers();
-    const choice = this.choices[index];
-    if (choice && choice.correct) {
+    const choice = this.mode === 'choice' ? this.choices[index] : null;
+    if (completed || (choice && choice.correct)) {
       player.score++;
       this.revealAnswer(player, `正解！ ${player.name} に1ポイント`);
       return;
     }
     player.locked = true;
     if (choice) choice.out = true;
-    this.setPhase('feedback', choice ? `ざんねん！ ${player.name} はお手つき` : `時間切れ！ ${player.name} はお手つき`);
+    this.letters = null;
+    this.setPhase('feedback', choice || missed ? `ざんねん！ ${player.name} はお手つき` : `時間切れ！ ${player.name} はお手つき`);
     this.timeout = setTimeout(() => {
       if (this.allLocked()) this.revealAnswer(null, '全員お手つき！');
       else this.resumeReading();
@@ -370,7 +427,8 @@ export class Room extends DurableObject {
   revealAnswer(winner, message) {
     this.clearTimers();
     const q = this.questions[this.index];
-    this.choicesVisible = true;
+    this.choicesVisible = this.mode === 'choice';
+    this.letters = null;
     this.winner = winner ? winner.id : null;
     this.setPhase('reveal', winner ? message : `${message} 正解は「${q.answer}」`);
     const last = this.index >= this.questions.length - 1;
@@ -439,6 +497,10 @@ export class Room extends DurableObject {
       message: this.message,
       questionCount: this.questionCount,
       questionCounts: QUESTION_COUNTS,
+      answerMode: this.answerMode,
+      answerModes: ANSWER_MODES,
+      genres: this.genres,
+      genreList: GENRES,
       totalQuestions: QUESTIONS.length,
       players: this.players.map((p) => ({
         id: p.id,
@@ -453,9 +515,17 @@ export class Room extends DurableObject {
         total: this.questions.length,
         text: this.chars.slice(0, this.shown).join(''),
         rest: reveal ? this.chars.slice(this.shown).join('') : '',
+        mode: this.mode,
+        answer: reveal ? this.answerChars.join('') : null,
         choices: this.choicesVisible
           ? this.choices.map((c) => ({ text: c.text, out: c.out, correct: reveal && c.correct }))
           : null,
+        // 文字入力: 何文字か・どこまで選べたか・いま選べる4文字
+        input: this.mode === 'input' && (this.phase === 'answering' || this.phase === 'feedback' || reveal) ? {
+          total: this.answerChars.length,
+          typed: reveal ? this.answerChars.join('') : this.answerChars.slice(0, this.typed).join(''),
+          letters: this.phase === 'answering' ? this.letters : null,
+        } : null,
       } : null,
       buzzer: this.buzzer,
       winner: this.winner,

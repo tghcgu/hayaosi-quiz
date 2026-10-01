@@ -129,22 +129,37 @@ function renderLobby() {
 
   $('host-controls').hidden = !host;
   $('lobby-wait').hidden = host;
-  $('lobby-wait').textContent = `問題数: ${countLabel(state.questionCount)}　ホストがスタートするのを待っています…`;
+  $('lobby-wait').textContent = `問題数: ${state.questionCount}問　答え方: ${MODE_LABELS[state.answerMode]}　ジャンル: ${state.genres.length ? state.genres.join('・') : 'すべて'}　ホストがスタートするのを待っています…`;
 
-  const counts = $('counts');
-  counts.textContent = '';
-  for (const n of state.questionCounts) {
+  renderSeg($('counts'), state.questionCounts, state.questionCount, (n) => `${n}問`, (n) => ({ questionCount: n }));
+  renderSeg($('modes'), state.answerModes, state.answerMode, (m) => MODE_LABELS[m], (m) => ({ answerMode: m }));
+
+  // ジャンル: 押すたびに選ぶ／外す。何も選ばなければ「すべて」
+  const genres = $('genres');
+  genres.textContent = '';
+  const toggle = (g) => (state.genres.includes(g) ? state.genres.filter((x) => x !== g) : [...state.genres, g]);
+  for (const g of ['すべて', ...state.genreList]) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.textContent = countLabel(n);
-    button.classList.toggle('on', n === state.questionCount);
-    button.addEventListener('click', () => send({ type: 'settings', questionCount: n }));
-    counts.append(button);
+    button.textContent = g;
+    button.classList.toggle('on', g === 'すべて' ? state.genres.length === 0 : state.genres.includes(g));
+    button.addEventListener('click', () => send({ type: 'settings', genres: g === 'すべて' ? [] : toggle(g) }));
+    genres.append(button);
   }
 }
 
-function countLabel(n) {
-  return n ? `${n}問` : `全問(${state.totalQuestions})`;
+const MODE_LABELS = { mix: 'ミックス', choice: '選択肢', input: '文字入力' };
+
+function renderSeg(box, values, current, label, settings) {
+  box.textContent = '';
+  for (const v of values) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label(v);
+    button.classList.toggle('on', v === current);
+    button.addEventListener('click', () => send({ type: 'settings', ...settings(v) }));
+    box.append(button);
+  }
 }
 
 function renderPlayers(list, players, withScore = false) {
@@ -168,7 +183,7 @@ function renderGame() {
   const mine = me();
   const myTurn = state.phase === 'answering' && state.buzzer === state.you;
 
-  $('q-number').textContent = `${q.number}/${q.total}問`;
+  $('q-number').textContent = `${q.number}/${q.total}問${q.mode === 'input' ? '・文字入力' : ''}`;
 
   const scores = $('scores');
   scores.textContent = '';
@@ -187,11 +202,41 @@ function renderGame() {
 
   let status = state.message;
   if (state.phase === 'ready') status = `第${q.number}問`;
-  if (myTurn) status = 'あなたが早押し！ 答えをえらんで';
+  if (myTurn) status = q.mode === 'input' ? 'あなたが早押し！ 1文字ずつ選んで答えて' : 'あなたが早押し！ 答えをえらんで';
   $('status').textContent = status;
+
+  // 文字入力: 答えの文字数ぶんのマスと、選べる4文字
+  const input = q.input;
+  $('input').hidden = !input;
+  if (input) {
+    const typed = Array.from(input.typed);
+    const boxes = $('typed');
+    boxes.textContent = '';
+    boxes.classList.toggle('correct', state.phase === 'reveal' && Boolean(state.winner));
+    for (let i = 0; i < input.total; i++) {
+      const box = span(typed[i] ? 'filled' : '', typed[i] || '');
+      boxes.append(box);
+    }
+    const letters = $('letters');
+    letters.textContent = '';
+    (input.letters || []).forEach((ch, i) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = ch;
+      button.disabled = !myTurn;
+      button.addEventListener('click', () => {
+        // 連打で次の文字まで選ばないよう、返事が来るまで押せなくする
+        for (const b of letters.children) b.disabled = true;
+        send({ type: 'letter', index: i, pos: typed.length });
+      });
+      letters.append(button);
+    });
+  }
 
   const choices = $('choices');
   choices.textContent = '';
+  // 選択肢が長い問題（ことわざの意味など）は1列にならべる
+  choices.classList.toggle('wide', (q.choices || []).some((c) => c.text.length > 9));
   (q.choices || []).forEach((c, i) => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -285,10 +330,14 @@ const sound = (() => {
     wrong() { tone(196, 0, 0.5, 'sawtooth', 0.12); tone(185, 0, 0.5, 'sawtooth', 0.12); },
     timeUp() { tone(440, 0, 0.2); tone(330, 0.2, 0.4); },
     finish() { [523, 659, 784, 659, 1047].forEach((f, i) => tone(f, i * 0.12, 0.35, 'triangle', 0.25)); },
+    letter() { tone(1175, 0, 0.08, 'triangle', 0.2); },
   };
 })();
 
 function playEffects(prev, next) {
+  // 文字入力で1文字正しく選べたとき
+  const typedLength = (s) => (s && s.question && s.question.input ? Array.from(s.question.input.typed).length : 0);
+  if (prev && prev.phase === 'answering' && next.phase === 'answering' && typedLength(next) > typedLength(prev)) sound.letter();
   if (prev && prev.phase === next.phase) return;
   if (next.phase === 'answering') {
     sound.buzz();
@@ -349,7 +398,8 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   const digit = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
-  const button = digit && $('choices').children[digit[1] - 1];
+  const buttons = $('input').hidden ? $('choices').children : $('letters').children;
+  const button = digit && buttons[digit[1] - 1];
   if (button && !button.disabled) button.click();
 });
 
@@ -366,3 +416,6 @@ drawTimer();
 
 // 20秒ごとに「まだいるよ」を送る（サーバーは1分届かないと切断とみなす）
 setInterval(() => send({ type: 'ping' }), 20000);
+
+// アプリとしてホーム画面に追加できるようにする（オフライン時の案内ページも用意される）
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

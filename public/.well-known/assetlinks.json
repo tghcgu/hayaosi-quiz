@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.tghcgu.hayaoshiroyale",
+      "sha256_cert_fingerprints": [
+        "D4:CD:50:C4:93:C1:1F:4F:64:C6:33:AE:79:5D:C4:51:B6:76:E2:D4:22:F1:EC:E5:26:C0:17:FA:8B:6C:A4:A4"
+      ]
+    }
+  }
+]

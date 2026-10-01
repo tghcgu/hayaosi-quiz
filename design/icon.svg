@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 背景（端まで塗る。Android の丸アイコンでも切れないよう、絵は中央の円の中に収める） -->
+  <rect width="512" height="512" fill="#1d2340"/>
+  <!-- 押した勢いの線 -->
+  <g stroke="#ffd166" stroke-width="14" stroke-linecap="round">
+    <line x1="256" y1="118" x2="256" y2="146"/>
+    <line x1="176" y1="140" x2="190" y2="164"/>
+    <line x1="336" y1="140" x2="322" y2="164"/>
+  </g>
+  <!-- 台 -->
+  <rect x="136" y="286" width="240" height="72" rx="20" fill="#e9e4d8"/>
+  <ellipse cx="256" cy="286" rx="120" ry="28" fill="#fffaf0"/>
+  <!-- ボタン -->
+  <rect x="176" y="236" width="160" height="50" fill="#b82e33"/>
+  <ellipse cx="256" cy="286" rx="80" ry="20" fill="#b82e33"/>
+  <path d="M176 236 A80 58 0 0 1 336 236 A80 20 0 0 1 176 236 Z" fill="#e5484d"/>
+  <ellipse cx="228" cy="206" rx="22" ry="10" fill="#fff" opacity=".45" transform="rotate(-20 228 206)"/>
+</svg>

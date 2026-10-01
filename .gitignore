@@ -2,3 +2,12 @@ node_modules/
 .wrangler/
 .dev.vars*
 .DS_Store
+
+# Android アプリのビルドでできるファイル
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.apk
+android/*.aab
+android/*.idsig
