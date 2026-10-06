@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "quiz": "node quiz/build.js",
+    "images": "node quiz/images/build.js",
     "predev": "node quiz/build.js",
     "dev": "wrangler dev --ip 0.0.0.0",
     "predeploy": "node quiz/build.js",
@@ -13,6 +14,7 @@
   },
   "devDependencies": {
     "@bubblewrap/cli": "^1.25.0",
+    "sharp": "^0.35.5",
     "wrangler": "^4.142.0"
   }
 }

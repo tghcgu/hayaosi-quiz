@@ -3,6 +3,7 @@
 
 import { DurableObject } from 'cloudflare:workers';
 import QUESTIONS from './questions.generated.json';
+import IMAGES from './images.generated.json';
 import { isInputQuestion, letterChoices } from './kana.js';
 
 // ===== ゲームの設定 =====
@@ -17,6 +18,9 @@ const LETTER_TIME = 6000;    // 文字入力で1文字選ぶまでの制限時�
 const QUESTION_COUNTS = [5, 10, 20]; // 選べる問題数
 const ANSWER_MODES = ['mix', 'choice', 'input']; // 答え方: ミックス / 選択肢 / 文字入力
 const MIX_INPUT_RATE = 0.3;  // ミックスのとき、文字入力で出す問題の割合
+const IMAGE_STEP = 1500;     // 画像クイズで、次の段階まで引いていく間隔(ミリ秒)
+const QUESTION_KINDS = ['mix', 'text', 'image']; // 出題: まぜる / 文章 / 画像
+const IMAGE_MIX_RATE = 0.2;  // まぜるとき、画像クイズを出す割合
 
 // ジャンルの一覧（問題ファイルにならんでいる順）
 const GENRES = [...new Set(QUESTIONS.map((q) => q.genre))];
@@ -79,13 +83,15 @@ export class Room extends DurableObject {
     this.players = [];
     this.questionCount = 10;
     this.answerMode = 'mix';
+    this.questionKind = 'mix';
     this.genres = []; // 遊ぶジャンル（空ならすべて）
     this.phase = 'lobby'; // lobby → ready → reading ⇄ answering → feedback … → reveal → … → result
     this.message = '';
     this.questions = [];
     this.index = 0;
     this.chars = [];
-    this.shown = 0;
+    this.frames = null;       // 画像クイズの段階ごとの画像（文章の問題では null）
+    this.shown = 0;           // 出した文字の数（画像クイズでは、見せた段階の数）
     this.choices = [];
     this.choicesVisible = false;
     this.mode = 'choice';     // この問題の答え方（choice / input）
@@ -152,6 +158,7 @@ export class Room extends DurableObject {
         if (isHost && this.phase === 'lobby') {
           if (QUESTION_COUNTS.includes(msg.questionCount)) this.questionCount = msg.questionCount;
           if (ANSWER_MODES.includes(msg.answerMode)) this.answerMode = msg.answerMode;
+          if (QUESTION_KINDS.includes(msg.questionKind)) this.questionKind = msg.questionKind;
           if (Array.isArray(msg.genres)) this.genres = GENRES.filter((g) => msg.genres.includes(g));
           this.broadcast();
         }
@@ -299,17 +306,20 @@ export class Room extends DurableObject {
   // ===== ゲームの進行 =====
 
   startGame() {
-    if (QUESTIONS.length === 0) return;
     const count = this.questionCount;
-    const pool = this.genres.length ? QUESTIONS.filter((q) => this.genres.includes(q.genre)) : QUESTIONS;
-    // 答えがひらがな・カタカナだけで、選択肢なしでも答えが決まる問題は、文字入力でも出せる
-    const inputPool = pool.filter(isInputQuestion);
+    const inGenre = (q) => this.genres.length === 0 || this.genres.includes(q.genre);
+    const texts = QUESTIONS.filter(inGenre);
+    const images = IMAGES.filter(inGenre);
+    const wantImages = this.questionKind === 'image' ? count : this.questionKind === 'mix' ? Math.round(count * IMAGE_MIX_RATE) : 0;
+    // 選んだジャンルに画像クイズが足りないときは、文章の問題でうめる
+    const imageCount = Math.min(wantImages, images.length);
     const inputCount = this.answerMode === 'input' ? count : this.answerMode === 'mix' ? Math.round(count * MIX_INPUT_RATE) : 0;
-    const inputs = shuffle(inputPool).slice(0, inputCount).map((q) => ({ ...q, mode: 'input' }));
-    // 選んだジャンルに文字入力で出せる問題が足りないときは、選択肢の問題でうめる
-    const used = new Set(inputs.map((q) => q.q));
-    const choices = shuffle(pool.filter((q) => !used.has(q.q))).slice(0, count - inputs.length).map((q) => ({ ...q, mode: 'choice' }));
-    this.questions = shuffle([...inputs, ...choices]);
+    const imageInputs = this.answerMode === 'input' ? imageCount : Math.round(imageCount * inputCount / count);
+    this.questions = shuffle([
+      ...pickQuestions(images, imageCount, imageInputs),
+      ...pickQuestions(texts, count - imageCount, inputCount - imageInputs),
+    ]);
+    if (this.questions.length === 0) return;
     this.index = 0;
     for (const p of this.players) p.score = 0;
     this.startQuestion();
@@ -320,6 +330,7 @@ export class Room extends DurableObject {
     this.lastActivity = Date.now();
     const q = this.questions[this.index];
     this.chars = Array.from(q.q);
+    this.frames = q.image ? q.image.frames : null;
     this.shown = 0;
     this.choices = shuffle([
       { text: q.answer, correct: true },
@@ -343,22 +354,25 @@ export class Room extends DurableObject {
     this.buzzer = null;
     this.typed = 0;
     this.letters = null;
-    if (this.shown >= this.chars.length) return this.startWaiting();
+    // 文章の問題は1文字ずつ、画像クイズは1段階ずつ見せていく
+    const total = this.frames ? this.frames.length : this.chars.length;
+    if (this.frames && this.shown === 0) this.shown = 1; // 画像は、いちばん拡大したものをすぐに見せる
+    if (this.shown >= total) return this.startWaiting();
     this.setPhase('reading', 'わかったら早押し！');
     this.textTimer = setInterval(() => {
       this.shown++;
-      if (this.shown >= this.chars.length) {
+      if (this.shown >= total) {
         this.startWaiting();
         return;
       }
       this.broadcast();
-    }, CHAR_INTERVAL);
+    }, this.frames ? IMAGE_STEP : CHAR_INTERVAL);
     this.broadcast();
   }
 
   startWaiting() {
     this.clearTimers();
-    this.setPhase('waiting', '問題文はここまで。わかったら早押し！');
+    this.setPhase('waiting', this.frames ? 'これで全体です。わかったら早押し！' : '問題文はここまで。わかったら早押し！');
     this.startTimer(WAIT_TIME, () => this.revealAnswer(null, '時間切れ！'));
     this.broadcast();
   }
@@ -499,9 +513,12 @@ export class Room extends DurableObject {
       questionCounts: QUESTION_COUNTS,
       answerMode: this.answerMode,
       answerModes: ANSWER_MODES,
+      questionKind: this.questionKind,
+      questionKinds: QUESTION_KINDS,
       genres: this.genres,
       genreList: GENRES,
       totalQuestions: QUESTIONS.length,
+      totalImages: IMAGES.length,
       players: this.players.map((p) => ({
         id: p.id,
         name: p.name,
@@ -513,8 +530,9 @@ export class Room extends DurableObject {
       question: inQuestion ? {
         number: this.index + 1,
         total: this.questions.length,
-        text: this.chars.slice(0, this.shown).join(''),
-        rest: reveal ? this.chars.slice(this.shown).join('') : '',
+        text: this.frames ? this.chars.join('') : this.chars.slice(0, this.shown).join(''),
+        rest: reveal && !this.frames ? this.chars.slice(this.shown).join('') : '',
+        image: this.frames ? this.imageState(reveal) : null,
         mode: this.mode,
         answer: reveal ? this.answerChars.join('') : null,
         choices: this.choicesVisible
@@ -530,6 +548,17 @@ export class Room extends DurableObject {
       buzzer: this.buzzer,
       winner: this.winner,
       timer: this.timer ? { duration: this.timer.duration, remaining: Math.max(0, this.timer.endsAt - Date.now()) } : null,
+    };
+  }
+
+  // 画像クイズ: 見せている段階までと、先に読みこんでおく次の1段階だけを送る（全体は正解発表まで送らない）
+  imageState(reveal) {
+    const shown = reveal ? this.frames.length : this.shown;
+    return {
+      shown,
+      frames: this.frames.slice(0, Math.min(this.frames.length, shown + 1)),
+      step: IMAGE_STEP,
+      credit: reveal ? this.questions[this.index].image.credit : null,
     };
   }
 
@@ -562,6 +591,16 @@ function randomInt(n) {
 
 function randomHex(bytes) {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// pool から n問選び、そのうち inputs問を文字入力にする（文字入力に向く問題が足りなければ選択肢でうめる）
+function pickQuestions(pool, n, inputs) {
+  if (n <= 0) return [];
+  // 答えがひらがな・カタカナだけで、選択肢なしでも答えが決まる問題は、文字入力でも出せる
+  const forInput = shuffle(pool.filter(isInputQuestion)).slice(0, Math.max(0, inputs));
+  const used = new Set(forInput);
+  const forChoice = shuffle(pool.filter((q) => !used.has(q))).slice(0, n - forInput.length);
+  return [...forInput.map((q) => ({ ...q, mode: 'input' })), ...forChoice.map((q) => ({ ...q, mode: 'choice' }))];
 }
 
 function shuffle(list) {

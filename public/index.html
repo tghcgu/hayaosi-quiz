@@ -23,7 +23,7 @@
     <label>部屋番号<input id="code" inputmode="numeric" maxlength="4" autocomplete="off"></label>
     <button type="button" id="join">部屋に入る</button>
     <p id="error" class="error" aria-live="polite"></p>
-    <a href="/privacy" class="footer-link">プライバシーポリシー</a>
+    <p class="footer-link"><a href="/privacy">プライバシーポリシー</a>　<a href="/credits">画像の出典</a></p>
   </section>
 
   <!-- 待合室 -->
@@ -35,6 +35,8 @@
     <div id="host-controls" class="screen">
       <p class="hint">問題数</p>
       <div id="counts" class="seg"></div>
+      <p class="hint">出題</p>
+      <div id="kinds" class="seg"></div>
       <p class="hint">答え方</p>
       <div id="modes" class="seg"></div>
       <p class="hint">ジャンル（複数選べます）</p>
@@ -53,6 +55,8 @@
       <button type="button" id="leave-game" class="link">退出</button>
     </div>
     <p id="q-text" class="q-text"></p>
+    <div id="photo" class="photo" hidden><img id="photo-img" alt="クイズの画像" draggable="false"></div>
+    <p id="credit" class="credit" hidden></p>
     <div class="timer"><div id="timer-bar"></div></div>
     <p id="status" class="status" aria-live="polite"></p>
     <div id="choices" class="choices"></div>

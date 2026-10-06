@@ -163,3 +163,28 @@ body[data-phase="reading"] .q-text::after { content: "▍"; color: var(--muted);
 .doc h2 { margin-top: 1.5em; font-size: 1.1rem; }
 .doc p, .doc ul { margin: 0 0 12px; }
 .doc a { color: inherit; }
+
+/* 画像クイズ */
+#game.image .q-text { min-height: 0; }
+#game.image .q-text::after { content: none; }
+#game.image .buzz { min-height: min(22vh, 180px); }
+.photo {
+  width: min(100%, 40vh);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #151a33;
+}
+.photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.credit { color: var(--muted); font-size: .7rem; text-align: center; overflow-wrap: anywhere; }
+.footer-link a { color: inherit; }

@@ -129,9 +129,10 @@ function renderLobby() {
 
   $('host-controls').hidden = !host;
   $('lobby-wait').hidden = host;
-  $('lobby-wait').textContent = `問題数: ${state.questionCount}問　答え方: ${MODE_LABELS[state.answerMode]}　ジャンル: ${state.genres.length ? state.genres.join('・') : 'すべて'}　ホストがスタートするのを待っています…`;
+  $('lobby-wait').textContent = `問題数: ${state.questionCount}問　出題: ${KIND_LABELS[state.questionKind]}　答え方: ${MODE_LABELS[state.answerMode]}　ジャンル: ${state.genres.length ? state.genres.join('・') : 'すべて'}　ホストがスタートするのを待っています…`;
 
   renderSeg($('counts'), state.questionCounts, state.questionCount, (n) => `${n}問`, (n) => ({ questionCount: n }));
+  renderSeg($('kinds'), state.questionKinds, state.questionKind, (k) => KIND_LABELS[k], (k) => ({ questionKind: k }));
   renderSeg($('modes'), state.answerModes, state.answerMode, (m) => MODE_LABELS[m], (m) => ({ answerMode: m }));
 
   // ジャンル: 押すたびに選ぶ／外す。何も選ばなければ「すべて」
@@ -149,6 +150,7 @@ function renderLobby() {
 }
 
 const MODE_LABELS = { mix: 'ミックス', choice: '選択肢', input: '文字入力' };
+const KIND_LABELS = { mix: 'まぜる', text: '文章', image: '画像' };
 
 function renderSeg(box, values, current, label, settings) {
   box.textContent = '';
@@ -183,7 +185,7 @@ function renderGame() {
   const mine = me();
   const myTurn = state.phase === 'answering' && state.buzzer === state.you;
 
-  $('q-number').textContent = `${q.number}/${q.total}問${q.mode === 'input' ? '・文字入力' : ''}`;
+  $('q-number').textContent = `${q.number}/${q.total}問${q.image ? '・画像' : ''}${q.mode === 'input' ? '・文字入力' : ''}`;
 
   const scores = $('scores');
   scores.textContent = '';
@@ -199,6 +201,7 @@ function renderGame() {
   const text = $('q-text');
   text.textContent = q.text;
   if (q.rest) text.append(span('rest', q.rest));
+  renderPhoto(q);
 
   let status = state.message;
   if (state.phase === 'ready') status = `第${q.number}問`;
@@ -259,6 +262,95 @@ function renderGame() {
     timerDuration = state.timer.duration;
   } else {
     timerDuration = 0;
+  }
+}
+
+// ===== 画像クイズ =====
+// サーバーは「何段階目まで見せたか」だけを送ってくる。
+// 新しい段階の画像は、1つ前の段階と同じ見え方から始めて、その段階の全体までなめらかに引いていく。
+// 早押しされたらその場で止め、続きになったらまた動かす
+
+let photo = { key: null, shown: 0 };
+const preloaded = new Set();
+
+function preload(src) {
+  if (preloaded.has(src)) return;
+  preloaded.add(src);
+  new Image().src = src;
+}
+
+// 1つ前の段階の範囲 (prev) が、いまの段階の画像 (cur) の中でどこにあたるか → それが画面いっぱいになる transform
+function viewOf(prev, cur) {
+  const [px, py, ps] = prev;
+  const [cx, cy, cs] = cur;
+  const f = ps / cs;
+  return `scale(${1 / f}) translate(${(-(px - cx) / cs) * 100}%, ${(-(py - cy) / cs) * 100}%)`;
+}
+
+function moveTo(img, ms) {
+  img.style.transition = `transform ${Math.max(0, Math.round(ms))}ms linear`;
+  img.style.transform = 'none';
+  photo.moving = { start: performance.now(), duration: ms, from: photo.progress };
+}
+
+function freeze(img) {
+  if (!photo.moving) return;
+  const m = photo.moving;
+  const t = m.duration ? Math.min(1, (performance.now() - m.start) / m.duration) : 1;
+  photo.progress = m.from + (1 - m.from) * t;
+  const now = getComputedStyle(img).transform;
+  img.style.transition = 'none';
+  img.style.transform = now === 'none' ? 'none' : now;
+  photo.moving = null;
+}
+
+function renderPhoto(q) {
+  const box = $('photo');
+  const img = $('photo-img');
+  const im = q.image;
+  $('game').classList.toggle('image', Boolean(im));
+  box.hidden = !im;
+  $('credit').hidden = !(im && im.credit);
+  if (!im) {
+    photo = { key: null, shown: 0 };
+    return;
+  }
+  im.frames.forEach((f) => preload(f.src));
+  if (im.credit) $('credit').textContent = `写真: ${im.credit.artist}（${im.credit.license}）`;
+  if (photo.key !== q.number) {
+    photo = { key: q.number, shown: 0, progress: 1, moving: null };
+    img.style.transition = 'none';
+    img.style.transform = 'none';
+    img.removeAttribute('src');
+  }
+  if (im.shown === 0) return; // 問題が始まる前
+  const cur = im.frames[im.shown - 1];
+  if (state.phase === 'reveal') {
+    // 正解発表: 全体をそのまま見せる
+    photo = { ...photo, shown: im.shown, progress: 1, moving: null };
+    if (img.getAttribute('src') !== cur.src) img.src = cur.src;
+    img.style.transition = 'none';
+    img.style.transform = 'none';
+    return;
+  }
+  const running = state.phase === 'reading' || state.phase === 'waiting';
+  if (im.shown !== photo.shown) {
+    // 次の段階へ。正解発表や、途中から入ったときは、動かさずにそのまま見せる
+    const prev = state.phase !== 'reveal' && im.shown === photo.shown + 1 ? im.frames[im.shown - 2] : null;
+    photo.shown = im.shown;
+    photo.moving = null;
+    img.style.transition = 'none';
+    img.src = cur.src;
+    img.style.transform = prev ? viewOf(prev.rect, cur.rect) : 'none';
+    photo.progress = prev ? 0 : 1;
+    if (prev && running) {
+      img.getBoundingClientRect(); // いまの見え方を確定させてから動かす
+      moveTo(img, im.step);
+    }
+  } else if (running && !photo.moving && photo.progress < 1) {
+    moveTo(img, im.step * (1 - photo.progress)); // お手つきのあと、続きから
+  } else if (!running && photo.moving) {
+    freeze(img); // 早押しされたら止める
   }
 }
 
