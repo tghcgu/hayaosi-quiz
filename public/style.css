@@ -188,3 +188,18 @@ body[data-phase="reading"] .q-text::after { content: "▍"; color: var(--muted);
 }
 .credit { color: var(--muted); font-size: .7rem; text-align: center; overflow-wrap: anywhere; }
 .footer-link a { color: inherit; }
+
+/* ランクマッチ */
+.ranked-box { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.my-rank { font-weight: 700; }
+.hearts { color: var(--ng); font-size: .75rem; letter-spacing: -1px; }
+.rating-change { font-size: 1.1rem; font-weight: 700; }
+.up { color: var(--ok); }
+.down { color: var(--ng); }
+.players .actions { display: flex; gap: 4px; }
+button.mini { padding: 4px 8px; font-size: .75rem; }
+.choice.picked { outline: 3px solid var(--text); }
+.ranking-list li { gap: 6px; }
+.ranking-list .place { min-width: 2.6em; color: var(--muted); }
+.room-info { display: flex; flex-direction: column; gap: 12px; }
+#lobby-wait, #matching-rules { white-space: pre-line; }

@@ -3,13 +3,20 @@
   "name": "hayaoshi-quiz-royale",
   "main": "src/worker.js",
   "compatibility_date": "2026-09-15",
-  // public/ の画面ファイルはそのまま配信し、/ws だけ Worker が受け付ける
+  // public/ の画面ファイルはそのまま配信し、/ws・/ladder・/api だけ Worker が受け付ける
   "assets": {
     "directory": "./public"
   },
-  // 部屋1つにつき Durable Object が1つ。早押しの判定はここで行う
+  // ROOMS: 部屋1つにつき Durable Object が1つ。早押しの判定はここで行う
+  // LADDER: ランクマッチの受付（全体で1つ）。レートとランキングを SQLite に保存する
   "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" },
+      { "name": "LADDER", "class_name": "Ladder" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }]
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room"] },
+    { "tag": "v2", "new_sqlite_classes": ["Ladder"] }
+  ]
 }

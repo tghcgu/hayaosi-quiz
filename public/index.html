@@ -18,7 +18,17 @@
   <section id="home" class="screen">
     <h1>早押しクイズロワイヤル</h1>
     <label>名前<input id="name" maxlength="10" autocomplete="nickname"></label>
-    <button type="button" id="create" class="primary">部屋をつくる</button>
+    <div class="ranked-box">
+      <p class="hint">ランクマッチ（全国のだれかと対戦）</p>
+      <p id="my-rank" class="my-rank"></p>
+      <div class="seg">
+        <button type="button" id="rank-duel" class="primary">2人対戦</button>
+        <button type="button" id="rank-four" class="primary">4人対戦</button>
+      </div>
+      <button type="button" id="open-ranking" class="link">ランキングを見る</button>
+    </div>
+    <p class="hint">友だちと遊ぶ</p>
+    <button type="button" id="create">部屋をつくる</button>
     <p class="or">または</p>
     <label>部屋番号<input id="code" inputmode="numeric" maxlength="4" autocomplete="off"></label>
     <button type="button" id="join">部屋に入る</button>
@@ -26,11 +36,33 @@
     <p class="footer-link"><a href="/privacy">プライバシーポリシー</a>　<a href="/credits">画像の出典</a></p>
   </section>
 
+  <!-- ランクマッチの相手さがし -->
+  <section id="matching" class="screen" hidden>
+    <p id="matching-mode" class="hint"></p>
+    <p class="winner">対戦相手をさがしています…</p>
+    <p id="matching-info" class="status"></p>
+    <p id="matching-rules" class="hint"></p>
+    <p id="matching-tip" class="hint" hidden>いまはさがしている人が少ないようです。このまま待つか、友だちと部屋をつくって遊んでね</p>
+    <button type="button" id="cancel-matching">やめる</button>
+  </section>
+
+  <!-- ランキング -->
+  <section id="leaderboard" class="screen" hidden>
+    <p class="hint">ランキング（レートの高い順・上位50人）</p>
+    <p id="lb-me" class="my-rank"></p>
+    <ol id="lb-list" class="players ranking-list"></ol>
+    <button type="button" id="lb-back">もどる</button>
+    <button type="button" id="lb-delete" class="link" hidden>ランクマッチの記録を消す</button>
+  </section>
+
   <!-- 待合室 -->
   <section id="lobby" class="screen" hidden>
-    <p class="hint">部屋番号</p>
-    <p id="lobby-code" class="code"></p>
-    <p class="hint">この番号をみんなに教えてね<br><span id="invite"></span></p>
+    <p id="ranked-title" class="winner" hidden></p>
+    <div id="room-info" class="room-info">
+      <p class="hint">部屋番号</p>
+      <p id="lobby-code" class="code"></p>
+      <p class="hint">この番号をみんなに教えてね<br><span id="invite"></span></p>
+    </div>
     <ul id="lobby-players" class="players"></ul>
     <div id="host-controls" class="screen">
       <p class="hint">問題数</p>
@@ -71,8 +103,10 @@
   <section id="result" class="screen" hidden>
     <p class="hint">結果</p>
     <p id="winner" class="winner"></p>
+    <p id="rating-change" class="rating-change" hidden></p>
     <ol id="ranking" class="players"></ol>
     <button type="button" id="again" class="primary">もう一度</button>
+    <button type="button" id="again-ranked" class="primary" hidden>もう一度さがす</button>
     <p id="result-wait" class="hint">ホストの操作を待っています…</p>
     <button type="button" id="leave-result" class="link">部屋を出る</button>
   </section>
