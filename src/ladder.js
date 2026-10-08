@@ -23,6 +23,7 @@ const SILENT_TIMEOUT = 60 * 1000;
 const RANKING_SIZE = 50;
 const RANKING_MIN_GAMES = 3;      // ランキングに出るのに必要な対戦数
 const REPORTS_TO_BAN = 3;         // この人数から通報されると、その名前は使えなくなる
+const MATCH_KEEP = 60 * 60 * 1000; // 結果が届かなかった対戦の記録も、これだけたったら消す
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -258,6 +259,7 @@ export class Ladder extends DurableObject {
       rating: e.player.rating,
       title: rankTitle(e.player.rating),
     }));
+    this.sql.exec('DELETE FROM matches WHERE created < ?', Date.now() - MATCH_KEEP);
     this.sql.exec('INSERT INTO matches (id, mode, players, created) VALUES (?, ?, ?, ?)', matchId, mode, JSON.stringify(players.map((p) => p.ladderId)), Date.now());
     try {
       const room = this.env.ROOMS.get(this.env.ROOMS.idFromName(`ranked:${matchId}`));
@@ -279,7 +281,8 @@ export class Ladder extends DurableObject {
   async reportResult(matchId, standings) {
     const match = this.sql.exec('SELECT * FROM matches WHERE id = ?', matchId).toArray()[0];
     if (!match || match.done) return null;
-    this.sql.exec('UPDATE matches SET done = 1 WHERE id = ?', matchId);
+    // 使い終わった対戦の記録は消す（行がなくなるので、同じ結果を2回数えることもない）
+    this.sql.exec('DELETE FROM matches WHERE id = ?', matchId);
     const allowed = new Set(JSON.parse(match.players));
     const entries = [];
     for (const s of standings) {
