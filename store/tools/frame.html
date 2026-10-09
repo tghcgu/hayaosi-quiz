@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    background: linear-gradient(170deg, #26305a 0%, #1d2340 55%, #12162b 100%);
+    font-family: "Yu Gothic UI", "Yu Gothic", "Hiragino Sans", Meiryo, sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { margin: 110px 0 0; font-size: 88px; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
+  h1 .accent { color: #ffd166; }
+  p { margin: 28px 0 0; font-size: 46px; font-weight: 700; color: #d9def5; }
+  .phone {
+    margin-top: 70px;
+    width: 760px;
+    height: 1351px;
+    border-radius: 56px;
+    overflow: hidden;
+    border: 10px solid #0b0e1c;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+  }
+  .phone img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+</style>
+</head>
+<body>
+  <h1 id="title"></h1>
+  <p id="sub"></p>
+  <div class="phone"><img id="shot" alt=""></div>
+<script>
+  const params = new URLSearchParams(location.search);
+  // *で囲んだ部分を黄色にする
+  document.getElementById('title').innerHTML = params.get('title').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]).replace(/\*(.+?)\*/g, '<span class="accent">$1</span>');
+  document.getElementById('sub').textContent = params.get('sub');
+  document.getElementById('shot').src = params.get('img');
+</script>
+</body>
+</html>

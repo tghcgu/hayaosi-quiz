@@ -56,6 +56,19 @@ npm run dev
 
 Windows の PowerShell で `npm` がエラーになるときは、`npm.cmd run dev` のように `npm.cmd` を使ってください。
 
+## テスト
+
+`npm run dev` を動かしたまま、別のターミナルで実行します。
+
+```
+npm test          # サーバーのテスト（偽プレイヤーを WebSocket でつないで、1ゲーム通して確かめる）
+npm run test:ui   # 画面のテスト（ヘッドレス Chrome で2〜4人分のページを開いて操作する）
+```
+
+- `test/play-test.cjs` … 早押し・回答・得点・結果 / `test/input-test.cjs` … 文字入力 / `test/genre-test.cjs` … ジャンル選び / `test/image-test.cjs` … 画像クイズ / `test/ranked-test.cjs` … ランクマッチ
+- `test/ranked-smoke.cjs` … 公開したあと、本番のランクマッチを確かめる（`WS_URL=wss://<公開先>/ws` を付けて実行。テスト用の記録は最後に消える）
+- 画面のテストのスクリーンショットは、一時フォルダの `hayaoshi-ui-test` に保存されます
+
 ## 公開する（Cloudflare）
 
 ```
@@ -110,6 +123,16 @@ Google Play でアプリ署名を有効にしたら、Play Console に表示さ�
 
 画像のファイル名は答えがわからない名前にしてあり、スマホには今の段階と次の段階の画像しか送らないので、先に全体を見ることはできません。
 
+## Google Play のストア素材
+
+`store/` に、掲載文（`listing.md`）、Play Console の入力内容の下書き（`play-console.md`）、アイコン・フィーチャーグラフィック・スクリーンショットがあります。
+
+スクリーンショットは `npm run store:shots`（`npm run dev` を動かしたまま）で `store/raw/` に撮り、`npm run store:images` で見出しを付けて `store/screenshots/` に書き出します。見出しの文は `store/tools/compose.cjs` にあります。
+
 ## 設定を変える
 
-文字が出る速さ・制限時間・最大人数などは `src/worker.js` の先頭にまとめてあります。
+文字が出る速さ・制限時間・最大人数などは `src/room.js` の先頭に、ランクマッチの相手さがしと通報の設定は `src/ladder.js` の先頭に、レートの計算は `src/rating.js` にまとめてあります。
+
+## 引き継ぎ
+
+アカウント・署名鍵のバックアップ・新しいパソコンでの始め方・Google Play 公開までの残りは [HANDOVER.md](HANDOVER.md) にあります。

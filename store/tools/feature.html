@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; }
+  body {
+    background: radial-gradient(circle at 22% 50%, #2d386b 0%, #1d2340 45%, #12162b 100%);
+    font-family: "Yu Gothic UI", "Yu Gothic", "Hiragino Sans", Meiryo, sans-serif;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    padding: 0 60px;
+    box-sizing: border-box;
+  }
+  .icon { width: 330px; height: 330px; flex: none; border-radius: 64px; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, .5); }
+  .icon img { width: 100%; height: 100%; display: block; }
+  h1 { margin: 0; font-size: 72px; font-weight: 800; line-height: 1.15; white-space: nowrap; }
+  h1 span { display: block; color: #ffd166; font-size: 88px; }
+  ul { margin: 26px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, max-content); gap: 12px; }
+  li { padding: 8px 20px; border-radius: 999px; background: rgba(255, 255, 255, .12); font-size: 28px; font-weight: 700; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="icon"><img id="icon" alt=""></div>
+  <div>
+    <h1>早押しクイズ<span>ロワイヤル</span></h1>
+    <ul>
+      <li>1万問</li>
+      <li>15ジャンル</li>
+      <li>画像クイズ</li>
+      <li>ランクマッチ</li>
+    </ul>
+  </div>
+<script>
+  document.getElementById('icon').src = new URLSearchParams(location.search).get('icon');
+</script>
+</body>
+</html>

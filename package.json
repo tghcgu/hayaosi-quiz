@@ -10,7 +10,11 @@
     "predev": "node quiz/build.js",
     "dev": "wrangler dev --ip 0.0.0.0",
     "predeploy": "node quiz/build.js",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "node test/run-all.cjs",
+    "test:ui": "node test/run-all.cjs --ui",
+    "store:shots": "node store/tools/shots.cjs",
+    "store:images": "node store/tools/compose.cjs"
   },
   "devDependencies": {
     "@bubblewrap/cli": "^1.25.0",
